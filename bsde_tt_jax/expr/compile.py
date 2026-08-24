@@ -3,6 +3,8 @@ from collections.abc import Callable
 import jax
 import sympy as sp
 
+__all__ = ["parse_math"]
+
 
 def parse_math(expr: str, constants: dict[str, float] | None = None) -> Callable:
     t = sp.symbols("t")

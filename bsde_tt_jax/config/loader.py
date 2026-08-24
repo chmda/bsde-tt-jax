@@ -3,6 +3,8 @@ import yaml
 from bsde_tt_jax.expr.compile import parse_math
 from bsde_tt_jax.solver.problem import ALSSpec, BSDEProblem, ChaosSpec, PicardSpec
 
+__all__ = ["load_config"]
+
 
 def _parse_chaos_spec(data: dict) -> ChaosSpec:
     degree = int(data["degree"])
