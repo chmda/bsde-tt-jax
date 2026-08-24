@@ -26,7 +26,7 @@ class SolverResult:
     converged: bool
     residual_history: list[float] = field(
         default_factory=list
-    )  # ||Y^(q+1)-Y^(q)|| per iter
+    )  # ||F^(q+1)-F^(q)|| per iter
 
     reference_Y0: Float[Array, "d"] | None = None
     reference_Z0: Float[Array, "d d_b"] | None = None

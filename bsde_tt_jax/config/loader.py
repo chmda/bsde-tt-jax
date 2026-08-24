@@ -1,7 +1,13 @@
 import yaml
 
 from bsde_tt_jax.expr.compile import parse_math
-from bsde_tt_jax.solver.problem import ALSSpec, BSDEProblem, ChaosSpec, PicardSpec
+from bsde_tt_jax.solver.problem import (
+    ALSSpec,
+    BSDEProblem,
+    ChaosSpec,
+    ChristoffelSpec,
+    PicardSpec,
+)
 
 __all__ = ["load_config"]
 
@@ -25,6 +31,13 @@ def _parse_picard_spec(data: dict) -> PicardSpec:
     return PicardSpec(max_iters=max_iters, tol=tol)
 
 
+def _parse_christoffel_spec(data: dict) -> ChristoffelSpec:
+    stability = float(data["stability"])
+    prob = float(data["prob"])
+    max_resample = int(data["max_resample"])
+    return ChristoffelSpec(stability=stability, prob=prob, max_resample=max_resample)
+
+
 def _parse_bsde(data: dict) -> BSDEProblem:
     name = data["name"]
     d = int(data["d"])
@@ -42,6 +55,7 @@ def _parse_bsde(data: dict) -> BSDEProblem:
     chaos_spec = _parse_chaos_spec(data["chaos"])
     als_spec = _parse_als_spec(data["als"])
     picard_spec = _parse_picard_spec(data["picard"])
+    christoffel_spec = _parse_christoffel_spec(data["christoffel"])
 
     reference = data.get("reference", None)
 
@@ -56,6 +70,7 @@ def _parse_bsde(data: dict) -> BSDEProblem:
         chaos=chaos_spec,
         als=als_spec,
         picard=picard_spec,
+        christoffel=christoffel_spec,
         reference=reference,
     )
 

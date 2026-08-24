@@ -30,6 +30,13 @@ class PicardSpec:
 
 
 @dataclass(frozen=True)
+class ChristoffelSpec:
+    stability: float
+    prob: float
+    max_resample: int
+
+
+@dataclass(frozen=True)
 class BSDEProblem:
     name: str
     d: str
@@ -41,4 +48,5 @@ class BSDEProblem:
     chaos: ChaosSpec
     als: ALSSpec
     picard: PicardSpec
+    christoffel: ChristoffelSpec
     reference: ReferenceSolution | None = None
