@@ -37,8 +37,14 @@ def tt_orth_right(core: TTCore) -> tuple[TTCore, TTCore]:
 
 
 @jax.jit
-def matvec(tt: TensorTrain, x: Sequence[Float[Array, "m"]]) -> Float[Array, "r0 rd"]:
+def tt_matvec(tt: TensorTrain, x: Sequence[Float[Array, "m"]]) -> Float[Array, "r0 rd"]:
     res = jnp.einsum("oab,a->ob", tt.cores[0], x[0])
     for i in range(1, tt.order):
         res = jnp.einsum("ob,bnd,n->od", res, tt.cores[i], x[i])
     return res
+
+
+@jax.jit
+def tt_at(tt: TensorTrain, indices: Sequence[int]) -> Float[Array, "r0 rd"]:
+    matrices = [core[:, idx, :] for core, idx in zip(tt.cores, indices)]
+    return jnp.linalg.multi_dot(matrices)
