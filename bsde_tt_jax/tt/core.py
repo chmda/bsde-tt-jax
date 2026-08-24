@@ -60,5 +60,16 @@ class TensorTrain:
 
         d = len(dims)
         subkeys = random.split(key, d)
-        cores = list(map(_random_core, zip(subkeys, ranks[:d], ranks[1:])))
+        cores = list(map(_random_core, zip(subkeys, ranks[:d], dims, ranks[1:])))
+        return TensorTrain(cores)
+
+    @staticmethod
+    def zeros(dims: Sequence[int], ranks: Sequence[int]) -> "TensorTrain":
+        assert _validate_ranks(dims, ranks), "'dims' and 'ranks' are incompatible."
+
+        def _zero_core(r0: int, m: int, r1: int) -> TTCore:
+            return jnp.zeros((r0, m, r1))
+
+        d = len(dims)
+        cores = list(map(_zero_core, zip(ranks[:d], dims, ranks[1:])))
         return TensorTrain(cores)

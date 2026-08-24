@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from functools import partial
 
 import jax
 import jax.numpy as jnp
@@ -46,7 +47,12 @@ def tt_matvec(tt: TensorTrain, x: Sequence[Float[Array, "m"]]) -> Float[Array, "
     return res
 
 
-@jax.jit
+@partial(jax.jit, static_argnames=("indices"))
 def tt_at(tt: TensorTrain, indices: Sequence[int]) -> Float[Array, "r0 rd"]:
     matrices = [core[:, idx, :] for core, idx in zip(tt.cores, indices)]
     return jnp.linalg.multi_dot(matrices)
+
+
+@jax.jit
+def tt_norm_diff(a: TensorTrain, b: TensorTrain) -> float:
+    return jnp.sqrt(abs(tt_dot(a, a) + tt_dot(b, b) - 2 * tt_dot(a, b)))

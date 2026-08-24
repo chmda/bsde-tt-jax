@@ -18,7 +18,7 @@ class SolverResult:
     N: int
     T: float
 
-    F: TensorTrain
+    F_hist: list[TensorTrain]
     Y0: Float[Array, "d"]
     Z0: Float[Array, "d d_b"]
 
@@ -93,7 +93,7 @@ def load_result(path: str | Path) -> SolverResult:
         d_b=meta["d_b"],
         N=meta["N"],
         T=meta["T"],
-        F=TensorTrain(arrays["F"]),
+        F_hist=[TensorTrain(F) for F in arrays["F_hist"]],
         Y0=arrays["Y0"],
         Z0=arrays["Z0"],
         n_iterations=meta["n_iterations"],
