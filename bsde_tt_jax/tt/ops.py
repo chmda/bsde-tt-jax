@@ -6,6 +6,8 @@ from jaxtyping import Array, Float
 
 from bsde_tt_jax.tt.core import TensorTrain, TTCore
 
+__all__ = ["tt_at", "tt_dot", "tt_matvec", "tt_norm", "tt_orth_left", "tt_orth_right"]
+
 
 @jax.jit
 def tt_dot(a: TensorTrain, b: TensorTrain) -> float:

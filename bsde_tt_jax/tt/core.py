@@ -5,6 +5,8 @@ from jax import random
 from jax.tree_util import register_pytree_node_class
 from jaxtyping import Array, Float, PRNGKeyArray
 
+__all__ = ["TTCore", "TensorTrain"]
+
 TTCore = Float[Array, "r0 m r1"]
 
 
