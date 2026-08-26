@@ -1,5 +1,4 @@
 from collections.abc import Sequence
-from functools import partial
 
 import jax
 import jax.numpy as jnp
@@ -47,7 +46,8 @@ def tt_matvec(tt: TensorTrain, x: Sequence[Float[Array, "m"]]) -> Float[Array, "
     return res
 
 
-@partial(jax.jit, static_argnames=("indices"))
+# @partial(jax.jit, static_argnames=("indices"))
+@jax.jit
 def tt_at(tt: TensorTrain, indices: Sequence[int]) -> Float[Array, "r0 rd"]:
     matrices = [core[:, idx, :] for core, idx in zip(tt.cores, indices)]
     return jnp.linalg.multi_dot(matrices)

@@ -1,0 +1,26 @@
+bsde:
+  - name: linear-polynomial
+    d: 1
+    db: 1
+    T: 1
+    N: 10
+    constants:
+      alpha: 1.0
+      beta: 1.0
+      n: 2
+    xi: "x**n"
+    f: "alpha*y + beta*z[0]"
+    chaos:
+      degree: 2
+      max_tt_rank: 3
+    als:
+      max_iters: 30
+      tol: 1e-6
+      regularization: 1e-8
+    picard:
+      max_iters: 7
+      tol: 1e-4
+    christoffel:
+      stability: 0.5
+      prob: 0.5
+      max_resample: 5

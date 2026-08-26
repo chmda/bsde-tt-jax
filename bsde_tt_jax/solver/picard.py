@@ -1,5 +1,7 @@
 import math
+from dataclasses import dataclass
 
+import jax
 import jax.numpy as jnp
 from jax import random
 from jaxtyping import Array, Float, PRNGKeyArray
@@ -7,6 +9,7 @@ from jaxtyping import Array, Float, PRNGKeyArray
 from bsde_tt_jax.basis.hermite import make_hermite_polynomials
 from bsde_tt_jax.io.results import SolverResult
 from bsde_tt_jax.solver.problem import BSDEProblem
+from bsde_tt_jax.tt.als import tt_als_christoffel
 from bsde_tt_jax.tt.compute import (
     compute_t0,
     evaluate_conditional_expectation,
@@ -16,6 +19,7 @@ from bsde_tt_jax.tt.core import TensorTrain
 from bsde_tt_jax.tt.ops import tt_norm_diff
 
 
+@dataclass(frozen=True)
 class PicardResult:
     tt: TensorTrain
     Y0: Float[Array, "d"]
@@ -25,8 +29,13 @@ class PicardResult:
 
 
 def fit_tt_chaos(
-    key: PRNGKeyArray, problem: BSDEProblem, tt_hist: list[TensorTrain]
+    key: PRNGKeyArray,
+    problem: BSDEProblem,
+    tt_hist: list[TensorTrain],
+    prev_tt: TensorTrain,
 ) -> tuple[TensorTrain, tuple[float, int]]:
+    dims = prev_tt.dims
+    ranks = prev_tt.ranks
     init_key, sampler_key = random.split(key, 2)
 
     xi = problem.xi
@@ -51,21 +60,22 @@ def fit_tt_chaos(
                     current_tt, j, problem.d_b, inputs[:j, :]
                 )
                 sum_term = sum_term + h * f(j * h, Y[j - 1, :], Z[j - 1, :, :])
-                new_Y[j - 1, :] = cond_exp - sum_term
-                new_Z[j - 1, :, :] = evaluate_z(
-                    current_tt, j, problem.d_b, h, inputs[:j, :]
+                new_Y = new_Y.at[j - 1, :].set(cond_exp - sum_term)
+                new_Z = new_Z.at[j - 1, :, :].set(
+                    evaluate_z(current_tt, j, problem.d_b, h, inputs[:j, :])
                 )
             Y = new_Y
             Z = new_Z
 
         # compute F^{(q)}
-        F = xi(inputs[-1, :])
+        BT = jnp.sqrt(h) * jnp.sum(inputs, axis=0)
+        F = xi(BT)
         for i in range(1, problem.N + 1):
             F = F + h * f(i * h, Y[i - 1, :], Z[i - 1, :])
         return F
 
     degree = problem.chaos.degree
-    init_tt = TensorTrain.random(init_key, tt_hist[-1].dims, tt_hist[-1].ranks)
+    init_tt = TensorTrain.random(init_key, dims, ranks)
     basis = make_hermite_polynomials(degree)
     bases = [basis] * init_tt.order
     new_tt, (stag, iters) = tt_als_christoffel(
@@ -83,14 +93,18 @@ def fit_tt_chaos(
     return new_tt, (stag, iters)
 
 
+# @jax.jit
 def picard_step(
-    key: PRNGKeyArray, problem: BSDEProblem, tt_hist: list[TensorTrain]
+    key: PRNGKeyArray,
+    problem: BSDEProblem,
+    tt_hist: list[TensorTrain],
+    prev_tt: TensorTrain,
 ) -> PicardResult:
-    new_tt, (als_stag, als_iters) = fit_tt_chaos(key, problem, tt_hist)
-    t0 = compute_t0(new_tt, problem.d_b, problem.T / problem.N)
-    return PicardResult(
-        tt=new_tt, Y0=t0.Y0, Z0=t0.Z0, als_stag=als_stag, als_iters=als_iters
+    new_tt, (als_stag, als_iters) = jax.jit(fit_tt_chaos, static_argnames=("problem"))(
+        key, problem, tt_hist, prev_tt
     )
+    Y0, Z0 = compute_t0(new_tt, problem.d_b, problem.T / problem.N)
+    return PicardResult(tt=new_tt, Y0=Y0, Z0=Z0, als_stag=als_stag, als_iters=als_iters)
 
 
 def run(key: PRNGKeyArray, problem: BSDEProblem) -> SolverResult:
@@ -104,19 +118,31 @@ def run(key: PRNGKeyArray, problem: BSDEProblem) -> SolverResult:
     ]
 
     prev_tt = TensorTrain.zeros(dims, ranks)
-    tt_hist = [prev_tt]
+    tt_hist = []
+    Y0_hist = []
+    Z0_hist = []
     prev_Y0 = jnp.zeros((problem.d,))
 
     residual_history = []
     converged = False
 
-    for q in problem.picard.max_iters:
+    for q in range(problem.picard.max_iters):
         key, step_key = random.split(key)
-        result = picard_step(step_key, problem, tt_hist)
+        result = picard_step(step_key, problem, tt_hist, prev_tt)
+        jax.debug.print(
+            "Picard iter {q}: ALS(stag={stag}, iters={iters}), Y0={Y0}, Z0={Z0}",
+            q=q,
+            stag=result.als_stag,
+            iters=result.als_iters,
+            Y0=result.Y0,
+            Z0=result.Z0,
+        )
         residual_history.append(tt_norm_diff(result.tt, prev_tt))
 
         prev_tt = result.tt
         tt_hist.append(prev_tt)
+        Y0_hist.append(result.Y0)
+        Z0_hist.append(result.Z0)
 
         y0_diff = float(jnp.linalg.norm(result.Y0 - prev_Y0))
         if y0_diff < problem.picard.tol:
@@ -133,11 +159,11 @@ def run(key: PRNGKeyArray, problem: BSDEProblem) -> SolverResult:
         N=problem.N,
         T=problem.T,
         F_hist=tt_hist,
-        Y0=prev_Y0,
-        Z0=result.Z0,
+        Y0_hist=Y0_hist,
+        Z0_hist=Z0_hist,
         n_iterations=q,
         converged=converged,
         residual_history=residual_history,
-        reference_Y0=problem.reference.Y0,
-        reference_Z0=problem.reference.Z0,
+        reference_Y0=problem.reference.Y0 if problem.reference else None,
+        reference_Z0=problem.reference.Z0 if problem.reference else None,
     )

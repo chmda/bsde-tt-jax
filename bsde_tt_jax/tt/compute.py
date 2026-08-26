@@ -19,7 +19,12 @@ def _truncate_tt(cores: list[TTCore], idx: int) -> Float[Array, "rk 1"]:
     h0_slice = [
         core[:, 0, :] for core in cores_slice
     ]  # expectation of linear combination of Hermite polynomials is a_0*E[H_0]=a_0
-    R = jnp.linalg.multi_dot(h0_slice)  # shape: (r_idx, 1)
+    if len(h0_slice) == 0:
+        R = jnp.ones((1, 1), dtype=cores[0].dtype)
+    elif len(h0_slice) == 1:
+        R = h0_slice[0]
+    else:
+        R = jnp.linalg.multi_dot(h0_slice)  # shape: (r_idx, 1)
     return R
 
 
@@ -110,7 +115,7 @@ def malliavin_derivative(
         if k == k_star:
             core = _hermite_derivative_core(core, h)
         if k == cutoff - 1:
-            core = jnp.einsum("ijk,jl->ijl", core, R)
+            core = jnp.einsum("ijk,kl->ijl", core, R)
         new_cores.append(core)
 
     return TensorTrain(cores=new_cores)
@@ -122,10 +127,10 @@ def compute_t0(
     order = tt.order
 
     zero_idx = jnp.zeros((order,), dtype=int)
-    Y0 = tt_at(tt, zero_idx)
+    Y0 = tt_at(tt, zero_idx)[:, 0]
 
     Z0_cols = [
-        tt_at(tt, zero_idx.at[l - 1].set(1)) for l in range(1, d_b + 1)
+        tt_at(tt, zero_idx.at[l - 1].set(1))[:, 0] for l in range(1, d_b + 1)
     ]  # compute Z_{t0}^{(ell)}
     Z0 = jnp.stack(Z0_cols, axis=1) / jnp.sqrt(h)  # (d, d_b)
 
@@ -146,7 +151,10 @@ def evaluate_conditional_expectation(
         jnp.einsum("ijk,j->ik", core, basis(increment))
         for core, basis, increment in zip(cond_tt.cores, bases, flat_increments)
     ]
-    R = jnp.linalg.multi_dot(contractions)
+    if len(contractions) == 1:
+        R = contractions[0]
+    else:
+        R = jnp.linalg.multi_dot(contractions)
     return R[:, 0]
 
 
@@ -167,7 +175,10 @@ def evaluate_z(
             jnp.einsum("ijk,j->ik", core, basis(increment))
             for core, basis, increment in zip(dtt.cores, bases, flat_increments)
         ]
-        R = jnp.linalg.multi_dot(contractions)
+        if len(contractions) == 1:
+            R = contractions[0]
+        else:
+            R = jnp.linalg.multi_dot(contractions)
         cols.append(R[:, 0])
 
     return jnp.stack(cols, axis=1)

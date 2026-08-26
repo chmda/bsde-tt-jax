@@ -1,3 +1,4 @@
+import math
 from collections.abc import Sequence
 
 import jax.numpy as jnp
@@ -13,9 +14,9 @@ TTCore = Float[Array, "r0 m r1"]
 def _validate_ranks(dims: Sequence[int], ranks: Sequence[int]) -> bool:
     d = len(dims)
     assert len(ranks) == d + 1, "'ranks' must haven length d+1"
-    for i in range(d):
-        assert ranks[i + 1] <= ranks[i] * dims[i]
-        assert ranks[i] <= dims[i] * ranks[i + 1]
+    for i in range(1, d + 1):
+        assert ranks[i] <= min(math.prod(dims[:i]), math.prod(dims[i:]))
+    return True
 
 
 @register_pytree_node_class
@@ -60,7 +61,7 @@ class TensorTrain:
 
         d = len(dims)
         subkeys = random.split(key, d)
-        cores = list(map(_random_core, zip(subkeys, ranks[:d], dims, ranks[1:])))
+        cores = list(map(_random_core, subkeys, ranks[:d], dims, ranks[1:]))
         return TensorTrain(cores)
 
     @staticmethod
@@ -71,5 +72,5 @@ class TensorTrain:
             return jnp.zeros((r0, m, r1))
 
         d = len(dims)
-        cores = list(map(_zero_core, zip(ranks[:d], dims, ranks[1:])))
+        cores = list(map(_zero_core, ranks[:d], dims, ranks[1:]))
         return TensorTrain(cores)

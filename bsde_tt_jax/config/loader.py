@@ -1,6 +1,6 @@
 import yaml
 
-from bsde_tt_jax.expr.compile import parse_math
+from bsde_tt_jax.expr.compile import parse_driver, parse_terminal
 from bsde_tt_jax.solver.problem import (
     ALSSpec,
     BSDEProblem,
@@ -22,6 +22,8 @@ def _parse_als_spec(data: dict) -> ALSSpec:
     max_iters = int(data["max_iters"])
     tol = float(data["tol"])
     regularization = data.get("regularization", None)
+    if regularization:
+        regularization = float(regularization)
     return ALSSpec(max_iters=max_iters, tol=tol, regularization=regularization)
 
 
@@ -47,10 +49,10 @@ def _parse_bsde(data: dict) -> BSDEProblem:
     constants = data.get("constants", None)
 
     xi_expr = data["xi"]
-    xi = parse_math(xi_expr, constants=constants)
+    xi = parse_terminal(xi_expr, constants=constants)
 
     f_expr = data["f"]
-    f = parse_math(f_expr, constants=constants)
+    f = parse_driver(f_expr, constants=constants)
 
     chaos_spec = _parse_chaos_spec(data["chaos"])
     als_spec = _parse_als_spec(data["als"])

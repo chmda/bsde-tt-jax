@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import jax.numpy as jnp
+import numpy as np
 from jaxtyping import Array, Float
 
 from bsde_tt_jax.tt.core import TensorTrain
@@ -19,8 +20,8 @@ class SolverResult:
     T: float
 
     F_hist: list[TensorTrain]
-    Y0: Float[Array, "d"]
-    Z0: Float[Array, "d d_b"]
+    Y0_hist: list[Float[Array, "d"]]
+    Z0_hist: list[Float[Array, "d d_b"]]
 
     n_iterations: int
     converged: bool
@@ -35,14 +36,14 @@ class SolverResult:
         """Absolute/relative error of Y0, Z0 against the YAML reference, if given."""
         if self.reference_Y0 is None:
             return None
-        y0_ref = jnp.asarray(self.reference_Y0)
-        y0_err_abs = float(jnp.linalg.norm(self.Y0 - y0_ref))
+        y0_ref = np.asarray(self.reference_Y0)
+        y0_err_abs = float(np.linalg.norm(self.Y0_hist[-1] - y0_ref))
         y0_err_rel = y0_err_abs / (float(jnp.linalg.norm(y0_ref)) + 1e-14)
         out = {"Y0_abs_error": y0_err_abs, "Y0_rel_error": y0_err_rel}
         if self.reference_Z0 is not None:
-            z0_ref = jnp.asarray(self.reference_Z0)
-            z0_err_abs = float(jnp.linalg.norm(self.Z0 - z0_ref))
-            z0_err_rel = z0_err_abs / (float(jnp.linalg.norm(z0_ref)) + 1e-14)
+            z0_ref = np.asarray(self.reference_Z0)
+            z0_err_abs = float(np.linalg.norm(self.Z0_hist[-1] - z0_ref))
+            z0_err_rel = z0_err_abs / (float(np.linalg.norm(z0_ref)) + 1e-14)
             out["Z0_abs_error"] = z0_err_abs
             out["Z0_rel_error"] = z0_err_rel
         return out
@@ -55,9 +56,9 @@ def save_result(result: SolverResult, path: str | Path) -> None:
 
     jnp.savez(
         path / "arrays.npz",
-        F=result.F,
-        Y0=result.Y0,
-        Z0=result.Z0,
+        F_hist=result.F_hist,
+        Y0_hist=result.Y0_hist,
+        Z0_hist=result.Z0_hist,
         reference_Y0=result.reference_Y0
         if result.reference_Y0 is not None
         else jnp.array([]),
@@ -73,7 +74,7 @@ def save_result(result: SolverResult, path: str | Path) -> None:
         "T": result.T,
         "n_iterations": result.n_iterations,
         "converged": result.converged,
-        "residual_history": result.residual_history,
+        "residual_history": np.asarray(result.residual_history),
         "errors": result.errors(),
     }
     (path / "meta.json").write_text(json.dumps(meta, indent=2))
@@ -81,7 +82,7 @@ def save_result(result: SolverResult, path: str | Path) -> None:
 
 def load_result(path: str | Path) -> SolverResult:
     path = Path(path)
-    arrays = jnp.load(path / "arrays.npz")
+    arrays = jnp.load(path / "arrays.npz", allow_pickle=True)
     meta = json.loads((path / "meta.json").read_text())
 
     ref_y0 = arrays["reference_Y0"]
@@ -94,8 +95,8 @@ def load_result(path: str | Path) -> SolverResult:
         N=meta["N"],
         T=meta["T"],
         F_hist=[TensorTrain(F) for F in arrays["F_hist"]],
-        Y0=arrays["Y0"],
-        Z0=arrays["Z0"],
+        Y0_hist=arrays["Y0_hist"],
+        Z0_hist=arrays["Z0_hist"],
         n_iterations=meta["n_iterations"],
         converged=meta["converged"],
         residual_history=meta["residual_history"],
