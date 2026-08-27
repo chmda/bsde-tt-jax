@@ -18,9 +18,57 @@ bsde:
       tol: 1e-6
       regularization: 1e-8
     picard:
-      max_iters: 7
+      max_iters: 6
       tol: 1e-4
     christoffel:
       stability: 0.5
       prob: 0.5
       max_resample: 5
+  - name: linear-sin
+    d: 1
+    db: 1
+    T: 1
+    N: 10
+    constants:
+      alpha: 1.0
+      beta: 1.0
+    xi: "sin(alpha*x)"
+    f: "-beta**2/2 * z[0]"
+    chaos:
+      degree: 3 # 3 works well
+      max_tt_rank: 4 # 4 works well
+    als:
+      max_iters: 100
+      tol: 1e-6
+      regularization: 1e-6
+    picard:
+      max_iters: 6
+      tol: 1e-4
+    christoffel:
+      stability: 0.5
+      prob: 0.5
+      max_resample: 5
+  - name: non-linear
+    d: 1
+    db: 1
+    T: 1
+    N: 10
+    constants:
+      alpha: 1.0
+      epsilon: 0.1
+    xi: "sin(alpha*x)"
+    f: "alpha**2/2 * y + epsilon*tanh(y**2 + z[0]**2/(alpha**2) - 1)"
+    chaos:
+      degree: 2 # 2 works well
+      max_tt_rank: 3 # 3 works well
+    als:
+      max_iters: 100
+      tol: 1e-6
+      # regularization: 1e-5
+    picard:
+      max_iters: 5
+      tol: 1e-4
+    christoffel:
+      stability: 0.5
+      prob: 0.5
+      max_resample: 5 

@@ -82,8 +82,7 @@ def main(argv: list[str] | None = None) -> int:
     (args.output / args.bsde).mkdir(parents=True, exist_ok=True)
     save_result(result, args.output / args.bsde)
 
-    converged = result.converged
-    return not converged
+    return 0
 
 
 if __name__ == "__main__":

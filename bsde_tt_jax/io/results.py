@@ -24,7 +24,6 @@ class SolverResult:
     Z0_hist: list[Float[Array, "d d_b"]]
 
     n_iterations: int
-    converged: bool
     residual_history: list[float] = field(
         default_factory=list
     )  # ||F^(q+1)-F^(q)|| per iter
@@ -73,8 +72,7 @@ def save_result(result: SolverResult, path: str | Path) -> None:
         "N": result.N,
         "T": result.T,
         "n_iterations": result.n_iterations,
-        "converged": result.converged,
-        "residual_history": np.asarray(result.residual_history),
+        "residual_history": np.asarray(result.residual_history).tolist(),
         "errors": result.errors(),
     }
     (path / "meta.json").write_text(json.dumps(meta, indent=2))
@@ -98,7 +96,6 @@ def load_result(path: str | Path) -> SolverResult:
         Y0_hist=arrays["Y0_hist"],
         Z0_hist=arrays["Z0_hist"],
         n_iterations=meta["n_iterations"],
-        converged=meta["converged"],
         residual_history=meta["residual_history"],
         reference_Y0=ref_y0 if ref_y0.size else None,
         reference_Z0=ref_z0 if ref_z0.size else None,

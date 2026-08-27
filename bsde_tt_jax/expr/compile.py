@@ -14,7 +14,7 @@ def parse_driver(expr: str, constants: dict[str, float] | None = None) -> Callab
 
     if constants is not None:
         constants_name = list(constants.keys())
-        constants_symbols = sp.symbols(" ".join(constants_name))
+        constants_symbols = sp.symbols(" ".join(constants_name) + ",")
         local_dict.update(
             {name: sym for name, sym in zip(constants_name, constants_symbols)}
         )
@@ -38,7 +38,7 @@ def parse_terminal(expr: str, constants: dict[str, float] | None = None) -> Call
 
     if constants is not None:
         constants_name = list(constants.keys())
-        constants_symbols = sp.symbols(" ".join(constants_name))
+        constants_symbols = sp.symbols(" ".join(constants_name) + ",")
         local_dict.update(
             {name: sym for name, sym in zip(constants_name, constants_symbols)}
         )
